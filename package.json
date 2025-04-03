@@ -23,6 +23,7 @@
     "@vercel/analytics": "^1.2.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
+    "html2canvas": "^1.4.1",
     "lucide-react": "^0.378.0",
     "markdown-to-image": "^0.0.12",
     "next": "15.1.2",
