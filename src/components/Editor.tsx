@@ -2,7 +2,7 @@
 import React, { useState, ChangeEvent, TextareaHTMLAttributes, useRef } from 'react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from './ui/button'
-import { Md2PosterContent, Md2Poster, Md2PosterHeader, Md2PosterFooter } from 'markdown-to-image'
+import { Md2PosterContent, Md2Poster } from 'markdown-to-image'
 import { Copy, LoaderCircle, Download } from 'lucide-react';
 import {
   Select,
@@ -12,41 +12,18 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import html2canvas from 'html2canvas';
+import { Slider } from "@/components/ui/slider"
 
-type Theme = typeof themes[number];
+type ThemeType = IThemeType;
 
-const Textarea: React.FC<TextareaHTMLAttributes<HTMLTextAreaElement>> = ({ onChange, ...rest }) => {
-  return (
-    <textarea
-      className="border-none bg-gray-100 p-8 w-full resize-none h-full min-h-screen
-      focus-visible:outline-none focus-visible:ring-0 focus-visible:border-0
-      text-gray-900/70 hover:text-gray-900 focus:text-gray-900 font-light font-inter
-      "
-      {...rest}
-      onChange={(e) => onChange?.(e)}
-    />
-  )
+interface ThemeConfig {
+  value: string;
+  label: string;
+  background: string;
+  markdownTheme: ThemeType;
 }
 
-const defaultMd = `# AI Morning News - April 29th
-![image](https://imageio.forbes.com/specials-images/imageserve/64b5825a5b9b4d3225e9bd15/artificial-intelligence--ai/960x0.jpg?format=jpg&width=1440)
-
-1. **MetaElephant Company Releases Multi-Modal Large Model XVERSE-V**: Supports image input of any aspect ratio, performs well in multiple authoritative evaluations, and has been open-sourced.
-2. **Tongyi Qianwen Team Open-Sources Billion-Parameter Model Qwen1.5-110B**: Uses Transformer decoder architecture, supports multiple languages, and has an efficient attention mechanism.
-
-# AI Technology Updates
-3. **Shengshu Technology and Tsinghua University Release Video Large Model Vidu**: Adopts a fusion architecture of Diffusion and Transformer, generates high-definition videos with one click, leading internationally.
-4. **Mutable AI Launches Auto Wiki v2**: Automatically converts code into Wikipedia-style articles, solving the problem of code documentation.
-
-# Industry News
-5. **Google Builds New Data Center in the U.S.**: Plans to invest $3 billion to build a data center campus in Indiana, expand facilities in Virginia, and launch an artificial intelligence opportunity fund.
-6. **China Academy of Information and Communications Technology Releases Automobile Large Model Standard**: Aims to standardize and promote the intelligent development of the automotive industry.
-
-# Product Updates
-7. **Kimi Chat Mobile App Update**: Version 1.2.1 completely revamps the user interface, introduces a new light mode, and provides a comfortable and intuitive experience.`
-
-// 修改主题配置
-const themes = [
+const themes: ThemeConfig[] = [
   {
     value: "SpringGradientWave",
     label: "春日渐变",
@@ -109,12 +86,49 @@ const themes = [
   }
 ] as const;
 
+type Theme = typeof themes[number];
+
 type RenderMode = 'long' | 'auto-pagination' | 'manual-pagination';
+
+// 修改比例类型定义
+type AspectRatio = '4:3' | '16:9' | 'auto';
+
+const Textarea: React.FC<TextareaHTMLAttributes<HTMLTextAreaElement>> = ({ onChange, ...rest }) => {
+  return (
+    <textarea
+      className="border-none bg-gray-100 p-8 w-full resize-none h-full min-h-screen
+      focus-visible:outline-none focus-visible:ring-0 focus-visible:border-0
+      text-gray-900/70 hover:text-gray-900 focus:text-gray-900 font-light font-inter
+      "
+      {...rest}
+      onChange={(e) => onChange?.(e)}
+    />
+  )
+}
+
+const defaultMd = `# AI Morning News - April 29th
+![image](https://imageio.forbes.com/specials-images/imageserve/64b5825a5b9b4d3225e9bd15/artificial-intelligence--ai/960x0.jpg?format=jpg&width=1440)
+
+1. **MetaElephant Company Releases Multi-Modal Large Model XVERSE-V**: Supports image input of any aspect ratio, performs well in multiple authoritative evaluations, and has been open-sourced.
+2. **Tongyi Qianwen Team Open-Sources Billion-Parameter Model Qwen1.5-110B**: Uses Transformer decoder architecture, supports multiple languages, and has an efficient attention mechanism.
+
+# AI Technology Updates
+3. **Shengshu Technology and Tsinghua University Release Video Large Model Vidu**: Adopts a fusion architecture of Diffusion and Transformer, generates high-definition videos with one click, leading internationally.
+4. **Mutable AI Launches Auto Wiki v2**: Automatically converts code into Wikipedia-style articles, solving the problem of code documentation.
+
+# Industry News
+5. **Google Builds New Data Center in the U.S.**: Plans to invest $3 billion to build a data center campus in Indiana, expand facilities in Virginia, and launch an artificial intelligence opportunity fund.
+6. **China Academy of Information and Communications Technology Releases Automobile Large Model Standard**: Aims to standardize and promote the intelligent development of the automotive industry.
+
+# Product Updates
+7. **Kimi Chat Mobile App Update**: Version 1.2.1 completely revamps the user interface, introduces a new light mode, and provides a comfortable and intuitive experience.`
 
 export default function Editor() {
   const [mdString, setMdString] = useState(defaultMd)
   const [currentTheme, setCurrentTheme] = useState<Theme>(themes[0])
   const [renderMode, setRenderMode] = useState<RenderMode>('long')
+  const [aspectRatio, setAspectRatio] = useState<AspectRatio>('auto')
+  const [bgOpacity, setBgOpacity] = useState(100);
   const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     setMdString(e.target.value)
   }
@@ -123,61 +137,72 @@ export default function Editor() {
   const [downloadLoading, setDownloadLoading] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleCopyFromChild = () => {
-    setCopyLoading(true)
-    markdownRef?.current?.handleCopy().then(res => {
-      setCopyLoading(false)
-      alert('复制成功!')
-    }).catch(err => {
-      setCopyLoading(false)
-      console.log('复制出错', err)
-    })
-  }
-
-  const handleDownload = async () => {
-    setDownloadLoading(true)
+  const handleCopyFromChild = async (container: HTMLElement) => {
+    setCopyLoading(true);
     try {
-      const element = containerRef.current;
-      if (!element) throw new Error('获取预览元素失败')
-      
-      const canvas = await html2canvas(element, {
-        backgroundColor: null,
+      const canvas = await html2canvas(container, {
+        backgroundColor: currentTheme.value.includes("Dark") ? '#1a1a1a' : '#ffffff',
         scale: 2,
         useCORS: true,
         allowTaint: true,
-      })
-      
-      const finalCanvas = document.createElement('canvas');
-      finalCanvas.width = canvas.width;
-      finalCanvas.height = canvas.height;
-      const ctx = finalCanvas.getContext('2d');
-      
-      if (ctx) {
-        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-        if (currentTheme.value.includes('Dark')) {
-          gradient.addColorStop(0, '#1a1a1a');
-          gradient.addColorStop(1, '#2d2d2d');
-        } else {
-          gradient.addColorStop(0, '#ffffff');
-          gradient.addColorStop(1, '#f5f5f5');
-        }
-        ctx.fillStyle = gradient;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        ctx.drawImage(canvas, 0, 0);
-      }
-      
-      const link = document.createElement('a')
-      link.download = 'markdown-poster.png'
-      link.href = finalCanvas.toDataURL('image/png', 1.0)
-      link.click()
-      
+        logging: false,
+      });
+
+      const blob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((blob) => {
+          resolve(blob as Blob);
+        }, 'image/png', 1.0);
+      });
+
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          'image/png': blob
+        })
+      ]);
+
+      alert('复制成功!');
     } catch (err) {
-      console.error('下载出错', err)
-      alert('下载失败，请稍后重试')
+      console.error('复制出错', err);
+      alert('复制失败，请稍后重试');
     }
-    setDownloadLoading(false)
-  }
+    setCopyLoading(false);
+  };
+
+  const handleDownload = async (container: HTMLElement) => {
+    setDownloadLoading(true);
+    try {
+      const wrapper = document.createElement('div');
+      wrapper.style.position = 'fixed';
+      wrapper.style.left = '-9999px';
+      wrapper.style.top = '0';
+      wrapper.style.padding = '24px';
+      wrapper.style.backgroundColor = currentTheme.value.includes("Dark") ? '#1a1a1a' : '#ffffff';
+      
+      const clone = container.cloneNode(true) as HTMLElement;
+      wrapper.appendChild(clone);
+      document.body.appendChild(wrapper);
+
+      try {
+        const canvas = await html2canvas(wrapper, {
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          logging: false,
+        });
+
+        const link = document.createElement('a');
+        link.download = 'markdown-poster.png';
+        link.href = canvas.toDataURL('image/png', 1.0);
+        link.click();
+      } finally {
+        document.body.removeChild(wrapper);
+      }
+    } catch (err) {
+      console.error('下载出错', err);
+      alert('下载失败，请稍后重试');
+    }
+    setDownloadLoading(false);
+  };
 
   const copySuccessCallback = () => {
     console.log('复制成功回调')
@@ -226,30 +251,188 @@ export default function Editor() {
     return [markdown];
   }
 
-  const Preview = ({ content, index, total }: { content: string, index?: number, total?: number }) => (
-    <div className={`
-      relative border border-gray-200 rounded-lg p-6 
-      ${currentTheme.value.includes("Dark") ? "bg-gray-800/50" : "bg-white/50"} 
-      backdrop-blur-sm
-    `}>
-      <Md2Poster 
-        theme={currentTheme.markdownTheme}
-        copySuccessCallback={copySuccessCallback} 
-        ref={index === 0 ? markdownRef : undefined}
-        className={currentTheme.value.includes("Dark") ? "prose-invert" : ""}
-      >
-        <Md2PosterContent>{content}</Md2PosterContent>
-      </Md2Poster>
-      {(typeof index === 'number' && typeof total === 'number') && (
-        <div className={`
-          absolute bottom-2 right-2 px-2 py-1 rounded text-xs
-          ${currentTheme.value.includes("Dark") ? "bg-gray-700 text-gray-300" : "bg-gray-200 text-gray-600"}
-        `}>
-          {index + 1} / {total}
+  const handleDownloadAll = async () => {
+    setDownloadLoading(true);
+    try {
+      const containers = document.querySelectorAll('.page-content');
+      
+      for (let i = 0; i < containers.length; i++) {
+        const container = containers[i] as HTMLElement;
+        if (!container) continue;
+
+        const wrapper = document.createElement('div');
+        wrapper.style.position = 'fixed';
+        wrapper.style.left = '-9999px';
+        wrapper.style.top = '0';
+        wrapper.style.padding = '24px';
+        wrapper.style.backgroundColor = currentTheme.value.includes("Dark") ? '#1a1a1a' : '#ffffff';
+        
+        const clone = container.cloneNode(true) as HTMLElement;
+        wrapper.appendChild(clone);
+        document.body.appendChild(wrapper);
+
+        try {
+          const canvas = await html2canvas(wrapper, {
+            scale: 2,
+            useCORS: true,
+            allowTaint: true,
+            logging: false,
+          });
+
+          const link = document.createElement('a');
+          link.download = `markdown-poster-${String(i + 1).padStart(2, '0')}.png`;
+          link.href = canvas.toDataURL('image/png', 1.0);
+          link.click();
+
+          // 添加延迟避免浏览器阻塞
+          await new Promise(resolve => setTimeout(resolve, 300));
+        } finally {
+          document.body.removeChild(wrapper);
+        }
+      }
+      alert('所有图片下载完成!');
+    } catch (err) {
+      console.error('下载出错', err);
+      alert('下载失败，请稍后重试');
+    }
+    setDownloadLoading(false);
+  };
+
+  // 修改 getAspectRatioStyle 函数
+  const getAspectRatioStyle = (ratio: AspectRatio) => {
+    switch (ratio) {
+      case '4:3':
+        return 'aspect-[3/4]'; // 高:宽 = 4:3 转换为 宽:高 = 3:4
+      case '16:9':
+        return 'aspect-[9/16]'; // 高:宽 = 16:9 转换为 宽:高 = 9:16
+      default:
+        return ''; // 自适应模式不添加样式
+    }
+  };
+
+  const Preview = React.memo(({ content, index, total }: { 
+    content: string, 
+    index?: number, 
+    total?: number 
+  }) => {
+    const previewRef = useRef<HTMLDivElement>(null);
+
+    // 判断是否为最后一页
+    const isLastPage = total !== undefined && index === total - 1;
+
+    // 获取当前页面的比例样式
+    const getPageAspectStyle = () => {
+      if (renderMode === 'long' || aspectRatio === 'auto' || isLastPage) {
+        return '';
+      }
+      return getAspectRatioStyle(aspectRatio);
+    };
+
+    return (
+      <div className="page-content relative group w-full mb-8">
+        <div ref={previewRef}>
+          <Md2Poster 
+            theme={currentTheme.markdownTheme}
+            copySuccessCallback={copySuccessCallback}
+            className={`
+              ${currentTheme.value.includes("Dark") ? "prose-invert" : ""}
+              ${getPageAspectStyle()}
+              relative rounded-lg overflow-hidden ${currentTheme.background}
+              w-full
+            `}
+            style={{ opacity: bgOpacity / 100 }}
+          >
+            <div className={`
+              w-full h-full flex flex-col
+              ${renderMode !== 'long' && aspectRatio !== 'auto' && !isLastPage ? 'justify-center' : ''}
+            `}>
+              <Md2PosterContent>{content}</Md2PosterContent>
+            </div>
+          </Md2Poster>
         </div>
-      )}
-    </div>
-  );
+        
+        {/* 悬浮按钮组 */}
+        <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          {/* 复制按钮 */}
+          <Button 
+            variant="outline"
+            size="sm"
+            className={`
+              backdrop-blur-sm rounded-lg w-8 h-8 p-0
+              ${currentTheme.value.includes("Dark") 
+                ? "bg-gray-800/80 hover:bg-gray-800/90 text-white border-gray-700" 
+                : "bg-white/80 hover:bg-white/90 border-gray-200"}
+            `}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (previewRef.current) {
+                handleCopyFromChild(previewRef.current);
+              }
+            }}
+            disabled={copyLoading}
+            title="复制图片"
+          >
+            {copyLoading ?
+              <LoaderCircle className="w-4 h-4 animate-spin" />
+              : <Copy className="w-4 h-4" />}
+          </Button>
+
+          {/* 下载按钮 */}
+          <Button 
+            variant="outline"
+            size="sm"
+            className={`
+              backdrop-blur-sm rounded-lg w-8 h-8 p-0
+              ${currentTheme.value.includes("Dark") 
+                ? "bg-gray-800/80 hover:bg-gray-800/90 text-white border-gray-700" 
+                : "bg-white/80 hover:bg-white/90 border-gray-200"}
+            `}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (previewRef.current) {
+                handleDownload(previewRef.current);
+              }
+            }}
+            disabled={downloadLoading}
+            title="下载当前图片"
+          >
+            {downloadLoading ?
+              <LoaderCircle className="w-4 h-4 animate-spin" />
+              : <Download className="w-4 h-4" />}
+          </Button>
+
+          {/* 只在第一页显示下载全部按钮 */}
+          {(index === 0 && total && total > 1) && (
+            <Button 
+              variant="outline"
+              size="sm"
+              className={`
+                backdrop-blur-sm rounded-lg w-8 h-8 p-0
+                ${currentTheme.value.includes("Dark") 
+                  ? "bg-gray-800/80 hover:bg-gray-800/90 text-white border-gray-700" 
+                  : "bg-white/80 hover:bg-white/90 border-gray-200"}
+              `}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDownloadAll();
+              }}
+              disabled={downloadLoading}
+              title="下载全部图片"
+            >
+              {downloadLoading ?
+                <LoaderCircle className="w-4 h-4 animate-spin" />
+                : <div className="relative">
+                    <Download className="w-4 h-4" />
+                    <span className="absolute -top-1 -right-1 text-[10px] font-bold">*</span>
+                  </div>
+              }
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  });
+  Preview.displayName = 'Preview';
 
   return (
     <div className="flex flex-col w-full gap-4">
@@ -286,21 +469,37 @@ export default function Editor() {
             </Select>
           </div>
 
-          <div className="flex-1" />
+          {/* 只在分页模式下显示比例选择器 */}
+          {renderMode !== 'long' && (
+            <>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-500">图片比例</span>
+                <Select value={aspectRatio} onValueChange={(value: AspectRatio) => setAspectRatio(value)}>
+                  <SelectTrigger className="w-[100px]">
+                    <SelectValue placeholder="选择比例" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">自适应</SelectItem>
+                    <SelectItem value="4:3">4:3</SelectItem>
+                    <SelectItem value="16:9">16:9</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
 
-          <Button className="rounded-xl" onClick={handleCopyFromChild} disabled={copyLoading}>
-            {copyLoading ?
-              <LoaderCircle className="w-4 h-4 mr-1 animate-spin" />
-              : <Copy className="w-4 h-4 mr-1" />}
-            复制图片
-          </Button>
-
-          <Button className="rounded-xl" onClick={handleDownload} disabled={downloadLoading}>
-            {downloadLoading ?
-              <LoaderCircle className="w-4 h-4 mr-1 animate-spin" />
-              : <Download className="w-4 h-4 mr-1" />}
-            下载图片
-          </Button>
+          {/* 透明度控制 - 移到外层,所有模式都显示 */}
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-gray-500">背景透明度</span>
+            <Slider
+              className="w-[200px]"
+              value={[bgOpacity]}
+              onValueChange={(value) => setBgOpacity(value[0])}
+              max={100}
+              step={1}
+            />
+            <span className="text-sm text-gray-500 w-9">{bgOpacity}%</span>
+          </div>
         </div>
       </div>
 
@@ -319,81 +518,43 @@ export default function Editor() {
             <div className="relative w-full flex justify-center">
               <div 
                 ref={containerRef}
-                className={`flex flex-col w-fit p-8 rounded-xl transition-colors ${currentTheme.background}`}
+                className="w-full max-w-2xl"
               >
                 {renderMode !== 'long' ? (
-                  <div className="flex flex-col gap-8">
-                    {(() => {
-                      const pages = splitMarkdown(mdString, renderMode);
-                      return pages.map((pageContent, index) => (
-                        <div key={index} className="page-content">
-                          <Preview 
-                            content={pageContent} 
-                            index={index} 
-                            total={pages.length}
-                          />
-                        </div>
-                      ));
-                    })()}
-                  </div>
+                  (() => {
+                    const pages = splitMarkdown(mdString, renderMode);
+                    return pages.map((pageContent, index) => (
+                      <Preview 
+                        key={index}
+                        content={pageContent} 
+                        index={index} 
+                        total={pages.length}
+                      />
+                    ));
+                  })()
                 ) : (
-                  <Preview content={mdString} />
+                  <div className={currentTheme.background}>
+                    <Preview content={mdString} />
+                  </div>
                 )}
-              </div>
-
-              {/* 悬浮按钮 */}
-              <div className="absolute top-2 right-2 flex flex-col gap-2">
-                <Button 
-                  variant="outline"
-                  size="sm"
-                  className={`
-                    backdrop-blur-sm
-                    ${currentTheme.value.includes("Dark") 
-                      ? "bg-gray-800/80 hover:bg-gray-800/90 text-white" 
-                      : "bg-white/80 hover:bg-white/90"}
-                  `}
-                  onClick={handleCopyFromChild} 
-                  disabled={copyLoading}
-                >
-                  {copyLoading ?
-                    <LoaderCircle className="w-4 h-4" />
-                    : <Copy className="w-4 h-4" />}
-                </Button>
-
-                <Button 
-                  variant="outline"
-                  size="sm"
-                  className={`
-                    backdrop-blur-sm
-                    ${currentTheme.value.includes("Dark") 
-                      ? "bg-gray-800/80 hover:bg-gray-800/90 text-white" 
-                      : "bg-white/80 hover:bg-white/90"}
-                  `}
-                  onClick={handleDownload} 
-                  disabled={downloadLoading}
-                >
-                  {downloadLoading ?
-                    <LoaderCircle className="w-4 h-4" />
-                    : <Download className="w-4 h-4" />}
-                </Button>
               </div>
             </div>
           </div>
         </div>
       </ScrollArea>
 
-      {/* 添加使用说明 */}
+      {/* 使用说明 */}
       <div className="max-w-6xl mx-auto px-4 py-2">
         <p className="text-sm text-gray-500">
           {renderMode === 'manual-pagination' ? (
-            '提示：在手动分页模式下，使用 "---" (三个或更多短横线) 来分割不同页面的内容'
+            '提示：在手动分页模式下，使用 "---" 来分割页面，点击下载将保存所有页面'
           ) : renderMode === 'auto-pagination' ? (
-            '提示：在自动分页模式下，会按标题自动分页，如果没有标题则每10行自动分页'
+            '提示：在自动分页模式下，会按标题自动分页，点击下载将保存所有页面'
           ) : (
-            '提示：长图模式下将生成单张完整图片'
+            '提示：长图模式下将生成并下载单张完整图片'
           )}
         </p>
       </div>
     </div>
-  )
+  );
 }
