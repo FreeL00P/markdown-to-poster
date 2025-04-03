@@ -1,5 +1,4 @@
 'use client'
-import MdHome from '@/markdown/home.mdx'
 import Section from '@/components/Section'
 import dynamic from 'next/dynamic'
 
@@ -12,7 +11,6 @@ export default function Home() {
       <Section className='relative'><Editor /></Section>
       <Section className="py-4">
         <article className="prose lg:prose-xl">
-          <MdHome />
         </article>
       </Section>
     </div>
