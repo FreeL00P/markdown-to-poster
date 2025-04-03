@@ -186,14 +186,8 @@ export default function EditProps() {
                 aspectRatio={radio}
                 canCopy={canCopy}
               >
-                <Md2PosterHeader className="flex justify-center items-center px-4 font-medium text-lg">
-                  <span>{new Date().toISOString().slice(0, 10)}</span>
-                </Md2PosterHeader>
+
                 <Md2PosterContent>{mdString}</Md2PosterContent>
-                <Md2PosterFooter className="text-center">
-                  <img src="/logo.png" alt="logo" className="inline-block mr-2 w-5" />
-                  Powered by readpo.com
-                </Md2PosterFooter>
               </Md2Poster>
             </div>
           </div>
