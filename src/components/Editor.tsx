@@ -13,6 +13,8 @@ import {
 } from "@/components/ui/select"
 import html2canvas from 'html2canvas';
 
+type Theme = typeof themes[number];
+
 const Textarea: React.FC<TextareaHTMLAttributes<HTMLTextAreaElement>> = ({ onChange, ...rest }) => {
   return (
     <textarea
@@ -107,11 +109,11 @@ const themes = [
   }
 ] as const;
 
-type RenderMode = 'long' | 'pagination';
+type RenderMode = 'long' | 'auto-pagination' | 'manual-pagination';
 
 export default function Editor() {
   const [mdString, setMdString] = useState(defaultMd)
-  const [currentTheme, setCurrentTheme] = useState(themes[0])
+  const [currentTheme, setCurrentTheme] = useState<Theme>(themes[0])
   const [renderMode, setRenderMode] = useState<RenderMode>('long')
   const handleChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     setMdString(e.target.value)
@@ -182,33 +184,46 @@ export default function Editor() {
   }
 
   const handleThemeChange = (value: string) => {
-    const newTheme = themes.find(t => t.value === value) || themes[0]
-    setCurrentTheme(newTheme)
+    const newTheme = themes.find(t => t.value === value)
+    if (newTheme) {
+      setCurrentTheme(newTheme)
+    }
   }
 
-  const splitMarkdown = (markdown: string): string[] => {
-    // 按标题分割
-    const sections = markdown.split(/(?=^# )/gm);
-    
-    if (sections.length <= 1) {
-      // 如果没有标题，则按照固定数量的行数分割
-      const lines = markdown.split('\n');
-      const pagesCount = Math.ceil(lines.length / 10); // 每页10行
-      const pages: string[] = [];
+  const splitMarkdown = (markdown: string, mode: RenderMode): string[] => {
+    if (mode === 'manual-pagination') {
+      // 手动分页：按 --- 分割
+      return markdown
+        .split(/\n\-{3,}\n/)
+        .map(content => content.trim())
+        .filter(content => content.length > 0);
+    } else if (mode === 'auto-pagination') {
+      // 自动分页：按标题分割
+      const sections = markdown.split(/(?=^# )/gm);
       
-      for (let i = 0; i < pagesCount; i++) {
-        const start = i * 10;
-        const end = start + 10;
-        const pageContent = lines.slice(start, end).join('\n');
-        if (pageContent.trim()) {
-          pages.push(pageContent);
+      if (sections.length <= 1) {
+        // 如果没有标题，则按照固定数量的行数分割
+        const lines = markdown.split('\n');
+        const pagesCount = Math.ceil(lines.length / 10); // 每页10行
+        const pages: string[] = [];
+        
+        for (let i = 0; i < pagesCount; i++) {
+          const start = i * 10;
+          const end = start + 10;
+          const pageContent = lines.slice(start, end).join('\n');
+          if (pageContent.trim()) {
+            pages.push(pageContent);
+          }
         }
+        
+        return pages;
       }
       
-      return pages;
+      return sections.filter(section => section.trim());
     }
     
-    return sections.filter(section => section.trim());
+    // 长图模式：返回整个内容
+    return [markdown];
   }
 
   const Preview = ({ content, index, total }: { content: string, index?: number, total?: number }) => (
@@ -265,7 +280,8 @@ export default function Editor() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="long">长图模式</SelectItem>
-                <SelectItem value="pagination">分页模式</SelectItem>
+                <SelectItem value="auto-pagination">自动分页</SelectItem>
+                <SelectItem value="manual-pagination">手动分页</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -305,10 +321,10 @@ export default function Editor() {
                 ref={containerRef}
                 className={`flex flex-col w-fit p-8 rounded-xl transition-colors ${currentTheme.background}`}
               >
-                {renderMode === 'pagination' ? (
+                {renderMode !== 'long' ? (
                   <div className="flex flex-col gap-8">
                     {(() => {
-                      const pages = splitMarkdown(mdString);
+                      const pages = splitMarkdown(mdString, renderMode);
                       return pages.map((pageContent, index) => (
                         <div key={index} className="page-content">
                           <Preview 
@@ -369,7 +385,13 @@ export default function Editor() {
       {/* 添加使用说明 */}
       <div className="max-w-6xl mx-auto px-4 py-2">
         <p className="text-sm text-gray-500">
-          提示：在分页模式下，使用 "---" (三个或更多短横线) 来分割不同页面的内容
+          {renderMode === 'manual-pagination' ? (
+            '提示：在手动分页模式下，使用 "---" (三个或更多短横线) 来分割不同页面的内容'
+          ) : renderMode === 'auto-pagination' ? (
+            '提示：在自动分页模式下，会按标题自动分页，如果没有标题则每10行自动分页'
+          ) : (
+            '提示：长图模式下将生成单张完整图片'
+          )}
         </p>
       </div>
     </div>
