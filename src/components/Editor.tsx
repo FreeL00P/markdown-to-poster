@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, ChangeEvent, TextareaHTMLAttributes, useRef } from 'react'
+import React, { useState, ChangeEvent, TextareaHTMLAttributes, useRef, useCallback } from 'react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from './ui/button'
 import { Md2PosterContent, Md2Poster } from 'markdown-to-image'
@@ -13,8 +13,10 @@ import {
 } from "@/components/ui/select"
 import html2canvas from 'html2canvas';
 import { Slider } from "@/components/ui/slider"
+import { Editor as MonacoEditor } from '@monaco-editor/react';
+import { editorTheme } from '@/lib/editor-theme';
 
-type ThemeType = IThemeType;
+type ThemeType = 'blue' | 'pink' | 'purple' | 'green' | 'yellow' | 'gray' | 'red' | 'indigo' | 'SpringGradientWave';
 
 interface ThemeConfig {
   value: string;
@@ -28,61 +30,61 @@ const themes: ThemeConfig[] = [
     value: "SpringGradientWave",
     label: "春日渐变",
     background: "bg-gradient-to-br from-green-50 to-blue-50",
-    markdownTheme: "default"
+    markdownTheme: "SpringGradientWave"
   },
   {
     value: "SummerSunset",
     label: "夏日晚霞",
     background: "bg-gradient-to-br from-orange-50 to-pink-50",
-    markdownTheme: "default"
+    markdownTheme: "pink"
   },
   {
     value: "AutumnWarmth",
     label: "秋日暖阳",
     background: "bg-gradient-to-br from-yellow-50 to-orange-50",
-    markdownTheme: "default"
+    markdownTheme: "yellow"
   },
   {
     value: "WinterFrost",
     label: "冬日霜雪",
     background: "bg-gradient-to-br from-blue-50 to-indigo-50",
-    markdownTheme: "default"
+    markdownTheme: "blue"
   },
   {
     value: "DarkGradientWave",
     label: "暗夜渐变",
     background: "bg-gradient-to-br from-gray-900 to-gray-800",
-    markdownTheme: "dark"
+    markdownTheme: "gray"
   },
   {
     value: "PurpleNight",
     label: "紫夜静谧",
     background: "bg-gradient-to-br from-purple-900 to-indigo-900",
-    markdownTheme: "dark"
+    markdownTheme: "purple"
   },
   {
     value: "SimpleLight",
     label: "简约亮色",
     background: "bg-white",
-    markdownTheme: "github"
+    markdownTheme: "indigo"
   },
   {
     value: "SimpleDark",
     label: "简约暗色", 
     background: "bg-gray-900",
-    markdownTheme: "github-dark"
+    markdownTheme: "gray"
   },
   {
     value: "GithubLight",
     label: "GitHub亮色",
     background: "bg-[#ffffff]",
-    markdownTheme: "github"
+    markdownTheme: "indigo"
   },
   {
     value: "GithubDark",
     label: "GitHub暗色",
     background: "bg-[#0d1117]",
-    markdownTheme: "github-dark"
+    markdownTheme: "gray"
   }
 ] as const;
 
@@ -93,18 +95,198 @@ type RenderMode = 'long' | 'auto-pagination' | 'manual-pagination';
 // 修改比例类型定义
 type AspectRatio = '4:3' | '16:9' | 'auto';
 
-const Textarea: React.FC<TextareaHTMLAttributes<HTMLTextAreaElement>> = ({ onChange, ...rest }) => {
+const Textarea: React.FC<TextareaHTMLAttributes<HTMLTextAreaElement>> = ({ onChange, value, ...rest }) => {
+  const handleEditorChange = (value: string | undefined) => {
+    if (onChange && value !== undefined) {
+      const event = {
+        target: { value },
+      } as ChangeEvent<HTMLTextAreaElement>;
+      onChange(event);
+    }
+  };
+
+  const handleEditorDidMount = useCallback((editor: any, monaco: any) => {
+    // 注册自定义主题
+    monaco.editor.defineTheme('markdown-light', editorTheme);
+    monaco.editor.setTheme('markdown-light');
+
+    // 配置 Markdown 折叠规则
+    editor.updateOptions({
+      folding: true,
+      foldingStrategy: 'indentation',
+      foldingHighlight: true,
+      foldingImportsByDefault: true,
+      showFoldingControls: 'always',
+      foldingRanges: {
+        start: /^#+\s+|\s*```/,
+        end: /^#+\s+|\s*```/
+      },
+      lineDecorationsWidth: 20,
+      lineNumbersMinChars: 3,
+      glyphMargin: true,
+      lineNumbers: 'on',
+      scrollBeyondLastLine: false,
+      automaticLayout: true,
+      minimap: { enabled: false },
+      fontSize: 14,
+      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+      lineHeight: 24,
+      padding: { top: 16, bottom: 16 },
+      wordWrap: 'on',
+      bracketPairColorization: {
+        enabled: true
+      },
+      guides: {
+        indentation: true,
+        bracketPairs: true,
+        bracketPairsHorizontal: true,
+        highlightActiveBracketPair: true,
+        highlightActiveIndentation: true
+      },
+      // 滚动条配置
+      scrollbar: {
+        vertical: 'visible',
+        horizontal: 'visible',
+        useShadows: false,
+        verticalScrollbarSize: 8,
+        horizontalScrollbarSize: 8,
+        verticalHasArrows: false,
+        horizontalHasArrows: false,
+        arrowSize: 0,
+        handleMouseWheel: true,
+        alwaysConsumeMouseWheel: false
+      },
+      // 编辑器外观
+      overviewRulerLanes: 0,
+      overviewRulerBorder: false,
+      hideCursorInOverviewRuler: true,
+      renderValidationDecorations: 'on',
+      cursorBlinking: 'smooth',
+      cursorSmoothCaretAnimation: 'on',
+      cursorStyle: 'line',
+      smoothScrolling: true,
+      mouseWheelZoom: true,
+      // 内容配置
+      tabSize: 2,
+      insertSpaces: true,
+      detectIndentation: true,
+      trimAutoWhitespace: true,
+      // 选择配置
+      selectOnLineNumbers: true,
+      selectionHighlight: true,
+      selectionClipboard: true,
+      // 其他配置
+      contextmenu: true,
+      quickSuggestions: true,
+      suggestOnTriggerCharacters: true,
+      acceptSuggestionOnEnter: 'on',
+      tabCompletion: 'on',
+      wordBasedSuggestions: true,
+      parameterHints: {
+        enabled: true
+      }
+    });
+
+    // 注册 Markdown 语言配置
+    monaco.languages.register({ id: 'markdown' });
+    monaco.languages.setLanguageConfiguration('markdown', {
+      brackets: [
+        ['{', '}'],
+        ['[', ']'],
+        ['(', ')'],
+        ['```', '```'],
+        ['`', '`']
+      ],
+      autoClosingPairs: [
+        { open: '{', close: '}' },
+        { open: '[', close: ']' },
+        { open: '(', close: ')' },
+        { open: '```', close: '```' },
+        { open: '`', close: '`' }
+      ],
+      surroundingPairs: [
+        { open: '{', close: '}' },
+        { open: '[', close: ']' },
+        { open: '(', close: ')' },
+        { open: '```', close: '```' },
+        { open: '`', close: '`' }
+      ],
+      folding: {
+        markers: {
+          start: /^#+\s+|\s*```/,
+          end: /^#+\s+|\s*```/
+        }
+      }
+    });
+  }, []);
+
   return (
-    <textarea
-      className="border-none bg-gray-100 p-8 w-full resize-none h-full min-h-screen
-      focus-visible:outline-none focus-visible:ring-0 focus-visible:border-0
-      text-gray-900/70 hover:text-gray-900 focus:text-gray-900 font-light font-inter
-      "
-      {...rest}
-      onChange={(e) => onChange?.(e)}
-    />
-  )
-}
+    <div className="w-full h-full">
+      <MonacoEditor
+        height="100%"
+        defaultLanguage="markdown"
+        value={value as string}
+        onChange={handleEditorChange}
+        theme="markdown-light"
+        onMount={handleEditorDidMount}
+        options={{
+          minimap: { enabled: false },
+          lineNumbers: 'on',
+          folding: true,
+          foldingStrategy: 'indentation',
+          lineDecorationsWidth: 10,
+          lineNumbersMinChars: 3,
+          fontSize: 14,
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+          lineHeight: 24,
+          padding: { top: 16, bottom: 16 },
+          scrollBeyondLastLine: false,
+          renderWhitespace: 'selection',
+          wordWrap: 'on',
+          automaticLayout: true,
+          bracketPairColorization: {
+            enabled: true
+          },
+          guides: {
+            indentation: true,
+            bracketPairs: true,
+            bracketPairsHorizontal: true,
+            highlightActiveBracketPair: true,
+            highlightActiveIndentation: true
+          },
+          suggest: {
+            preview: true,
+            showMethods: true,
+            showFunctions: true,
+            showConstructors: true,
+            showFields: true,
+            showVariables: true,
+            showClasses: true,
+            showStructs: true,
+            showInterfaces: true,
+            showModules: true,
+            showProperties: true,
+            showEvents: true,
+            showOperators: true,
+            showUnits: true,
+            showValues: true,
+            showConstants: true,
+            showEnums: true,
+            showEnumMembers: true,
+            showKeywords: true,
+            showWords: true,
+            showColors: true,
+            showFiles: true,
+            showReferences: true,
+            showFolders: true,
+            showTypeParameters: true,
+            showSnippets: true
+          }
+        }}
+      />
+    </div>
+  );
+};
 
 const defaultMd = `# AI Morning News - April 29th
 ![image](https://imageio.forbes.com/specials-images/imageserve/64b5825a5b9b4d3225e9bd15/artificial-intelligence--ai/960x0.jpg?format=jpg&width=1440)
@@ -339,8 +521,8 @@ export default function Editor() {
               ${getPageAspectStyle()}
               relative rounded-lg overflow-hidden ${currentTheme.background}
               w-full
+              ${bgOpacity !== 100 ? `opacity-${bgOpacity}` : ''}
             `}
-            style={{ opacity: bgOpacity / 100 }}
           >
             <div className={`
               w-full h-full flex flex-col
