@@ -3,7 +3,7 @@ import React, { useState, ChangeEvent, TextareaHTMLAttributes, useRef, useCallba
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from './ui/button'
 import { Md2PosterContent, Md2Poster } from 'markdown-to-image'
-import { Copy, LoaderCircle, Download } from 'lucide-react';
+import { Copy, LoaderCircle, Download, Languages } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -15,6 +15,7 @@ import html2canvas from 'html2canvas';
 import { Slider } from "@/components/ui/slider"
 import { Editor as MonacoEditor } from '@monaco-editor/react';
 import { editorTheme } from '@/lib/editor-theme';
+import { useLanguage } from '@/lib/language-context'
 
 type ThemeType = 'blue' | 'pink' | 'purple' | 'green' | 'yellow' | 'gray' | 'red' | 'indigo' | 'SpringGradientWave';
 
@@ -28,61 +29,61 @@ interface ThemeConfig {
 const themes: ThemeConfig[] = [
   {
     value: "SpringGradientWave",
-    label: "春日渐变",
+    label: "SpringGradientWave",
     background: "bg-gradient-to-br from-green-50 to-blue-50",
     markdownTheme: "SpringGradientWave"
   },
   {
     value: "SummerSunset",
-    label: "夏日晚霞",
+    label: "SummerSunset",
     background: "bg-gradient-to-br from-orange-50 to-pink-50",
     markdownTheme: "pink"
   },
   {
     value: "AutumnWarmth",
-    label: "秋日暖阳",
+    label: "AutumnWarmth",
     background: "bg-gradient-to-br from-yellow-50 to-orange-50",
     markdownTheme: "yellow"
   },
   {
     value: "WinterFrost",
-    label: "冬日霜雪",
+    label: "WinterFrost",
     background: "bg-gradient-to-br from-blue-50 to-indigo-50",
     markdownTheme: "blue"
   },
   {
     value: "DarkGradientWave",
-    label: "暗夜渐变",
+    label: "DarkGradientWave",
     background: "bg-gradient-to-br from-gray-900 to-gray-800",
     markdownTheme: "gray"
   },
   {
     value: "PurpleNight",
-    label: "紫夜静谧",
+    label: "PurpleNight",
     background: "bg-gradient-to-br from-purple-900 to-indigo-900",
     markdownTheme: "purple"
   },
   {
     value: "SimpleLight",
-    label: "简约亮色",
+    label: "SimpleLight",
     background: "bg-white",
     markdownTheme: "indigo"
   },
   {
     value: "SimpleDark",
-    label: "简约暗色", 
+    label: "SimpleDark", 
     background: "bg-gray-900",
     markdownTheme: "gray"
   },
   {
     value: "GithubLight",
-    label: "GitHub亮色",
+    label: "GithubLight",
     background: "bg-[#ffffff]",
     markdownTheme: "indigo"
   },
   {
     value: "GithubDark",
-    label: "GitHub暗色",
+    label: "GithubDark",
     background: "bg-[#0d1117]",
     markdownTheme: "gray"
   }
@@ -306,6 +307,7 @@ const defaultMd = `# AI Morning News - April 29th
 7. **Kimi Chat Mobile App Update**: Version 1.2.1 completely revamps the user interface, introduces a new light mode, and provides a comfortable and intuitive experience.`
 
 export default function Editor() {
+  const { language, setLanguage, t } = useLanguage()
   const [mdString, setMdString] = useState(defaultMd)
   const [currentTheme, setCurrentTheme] = useState<Theme>(themes[0])
   const [renderMode, setRenderMode] = useState<RenderMode>('long')
@@ -617,20 +619,20 @@ export default function Editor() {
   Preview.displayName = 'Preview';
 
   return (
-    <div className="flex flex-col w-full gap-4">
+    <div className="flex flex-col w-full h-[calc(100vh-8rem)]">
       {/* 控制面板 */}
-      <div className="w-full border-b border-gray-200 pb-4">
-        <div className="max-w-6xl mx-auto px-4 flex items-center gap-4">
+      <div className="w-full border-b border-gray-200 pb-6 mt-8">
+        <div className="max-w-6xl mx-auto px-6 flex items-center gap-6">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">主题样式</span>
+            <span className="text-sm text-gray-500">{t('theme')}</span>
             <Select value={currentTheme.value} onValueChange={handleThemeChange}>
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="选择主题" />
+                <SelectValue placeholder={t('theme')} />
               </SelectTrigger>
               <SelectContent>
                 {themes.map((theme) => (
                   <SelectItem key={theme.value} value={theme.value}>
-                    {theme.label}
+                    {t(theme.value)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -638,30 +640,29 @@ export default function Editor() {
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">渲染方式</span>
+            <span className="text-sm text-gray-500">{t('renderMode')}</span>
             <Select value={renderMode} onValueChange={(value: RenderMode) => setRenderMode(value)}>
               <SelectTrigger className="w-[120px]">
-                <SelectValue placeholder="选择渲染方式" />
+                <SelectValue placeholder={t('renderMode')} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="long">长图模式</SelectItem>
-                <SelectItem value="auto-pagination">自动分页</SelectItem>
-                <SelectItem value="manual-pagination">手动分页</SelectItem>
+                <SelectItem value="long">{t('longMode')}</SelectItem>
+                <SelectItem value="auto-pagination">{t('autoPagination')}</SelectItem>
+                <SelectItem value="manual-pagination">{t('manualPagination')}</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* 只在分页模式下显示比例选择器 */}
           {renderMode !== 'long' && (
             <>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-gray-500">图片比例</span>
+                <span className="text-sm text-gray-500">{t('aspectRatio')}</span>
                 <Select value={aspectRatio} onValueChange={(value: AspectRatio) => setAspectRatio(value)}>
                   <SelectTrigger className="w-[100px]">
-                    <SelectValue placeholder="选择比例" />
+                    <SelectValue placeholder={t('aspectRatio')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="auto">自适应</SelectItem>
+                    <SelectItem value="auto">{t('auto')}</SelectItem>
                     <SelectItem value="4:3">4:3</SelectItem>
                     <SelectItem value="16:9">16:9</SelectItem>
                   </SelectContent>
@@ -670,9 +671,8 @@ export default function Editor() {
             </>
           )}
 
-          {/* 透明度控制 - 移到外层,所有模式都显示 */}
           <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-500">背景透明度</span>
+            <span className="text-sm text-gray-500">{t('bgOpacity')}</span>
             <Slider
               className="w-[200px]"
               value={[bgOpacity]}
@@ -682,58 +682,76 @@ export default function Editor() {
             />
             <span className="text-sm text-gray-500 w-9">{bgOpacity}%</span>
           </div>
+
+          {/* 语言切换按钮 */}
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setLanguage(language === 'zh' ? 'en' : 'zh')}
+            className="ml-auto"
+          >
+            <Languages className="h-4 w-4" />
+          </Button>
         </div>
       </div>
 
       {/* 编辑器主体 */}
-      <ScrollArea className="h-[90vh] w-full border-2 border-gray-900 rounded-xl mx-4">
-        <div className="flex flex-row h-full">
-          <div className="w-1/2">
-            <Textarea 
-              placeholder="在这里输入 Markdown 内容，使用 --- 来分页"
-              onChange={handleChange} 
-              defaultValue={mdString}
-              spellCheck={false}
-            />
-          </div>
-          <div className="w-1/2 mx-auto flex justify-center p-4">
-            <div className="relative w-full flex justify-center">
-              <div 
-                ref={containerRef}
-                className="w-full max-w-2xl"
-              >
-                {renderMode !== 'long' ? (
-                  (() => {
-                    const pages = splitMarkdown(mdString, renderMode);
-                    return pages.map((pageContent, index) => (
-                      <Preview 
-                        key={index}
-                        content={pageContent} 
-                        index={index} 
-                        total={pages.length}
-                      />
-                    ));
-                  })()
-                ) : (
-                  <div className={currentTheme.background}>
-                    <Preview content={mdString} />
-                  </div>
-                )}
+      <div className="flex-1 min-h-0">
+        <div className="h-full w-full border-2 border-gray-900 rounded-xl mx-6 overflow-hidden">
+          <div className="flex flex-row h-full">
+            {/* 编辑器区域 */}
+            <div className="w-1/2 h-full border-r border-gray-200">
+              <div className="h-full">
+                <Textarea 
+                  placeholder={t('placeholder')}
+                  onChange={handleChange} 
+                  defaultValue={mdString}
+                  spellCheck={false}
+                  className="h-full w-full resize-none focus:outline-none p-6 rounded-l-xl"
+                />
+              </div>
+            </div>
+            
+            {/* 预览区域 */}
+            <div className="w-1/2 h-full overflow-y-auto">
+              <div className="p-6">
+                <div 
+                  ref={containerRef}
+                  className="w-full"
+                >
+                  {renderMode !== 'long' ? (
+                    (() => {
+                      const pages = splitMarkdown(mdString, renderMode);
+                      return pages.map((pageContent, index) => (
+                        <Preview 
+                          key={index}
+                          content={pageContent} 
+                          index={index} 
+                          total={pages.length}
+                        />
+                      ));
+                    })()
+                  ) : (
+                    <div className={currentTheme.background}>
+                      <Preview content={mdString} />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </ScrollArea>
+      </div>
 
       {/* 使用说明 */}
-      <div className="max-w-6xl mx-auto px-4 py-2">
+      <div className="max-w-6xl mx-auto px-6 py-4">
         <p className="text-sm text-gray-500">
           {renderMode === 'manual-pagination' ? (
-            '提示：在手动分页模式下，使用 "---" 来分割页面，点击下载将保存所有页面'
+            t('manualPaginationTip')
           ) : renderMode === 'auto-pagination' ? (
-            '提示：在自动分页模式下，会按标题自动分页，点击下载将保存所有页面'
+            t('autoPaginationTip')
           ) : (
-            '提示：长图模式下将生成并下载单张完整图片'
+            t('longModeTip')
           )}
         </p>
       </div>

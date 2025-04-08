@@ -72,7 +72,54 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* 优化滚动性能 */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    -webkit-overflow-scrolling: touch;
   }
+}
+
+/* 优化滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--border) / 0.8);
+}
+
+/* 优化编辑器滚动 */
+.editor-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
+}
+
+.editor-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.editor-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.editor-scroll::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 3px;
+}
+
+.editor-scroll::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--border) / 0.8);
 }
 
 /* Markdown 语法高亮样式 */
@@ -129,4 +176,41 @@
 .markdown-highlight textarea {
   color: #1e293b;
   letter-spacing: 0.01em;
+}
+
+/* 编辑器容器样式 */
+.editor-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* 编辑器区域样式 */
+.editor-area {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.editor-area textarea {
+  width: 100%;
+  height: 100%;
+  padding: 1rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.875rem;
+  line-height: 1.7;
+  color: hsl(var(--foreground));
+  background-color: transparent;
+  border: none;
+  resize: none;
+  outline: none;
+}
+
+/* 预览区域样式 */
+.preview-area {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1rem;
 }
