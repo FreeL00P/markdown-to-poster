@@ -1,2 +1,6 @@
 ignoredBuiltDependencies:
   - sharp
+
+packages:
+  - 'packages/*'
+  - '!**/node_modules/**'
